@@ -1,0 +1,17 @@
+2025/07/19 17:18:17 logger.go:27: Application started
+2025/07/19 17:18:59 logger.go:27: Application started
+2025/07/19 17:19:13 middleware.go:38: [GET] /vlsl 127.0.0.1 - 40.996µs - text/plain; charset=utf-8
+2025/07/19 17:19:19 middleware.go:38: [GET] / 127.0.0.1 - 8.94µs - text/plain; charset=utf-8
+2025/07/19 17:23:42 middleware.go:38: [GET] / 127.0.0.1 - 9.988µs - text/plain; charset=utf-8
+2025/07/19 17:23:59 middleware.go:38: [GET] /health 127.0.0.1 - 125.923µs - application/json
+2025/07/19 17:24:07 middleware.go:38: [GET] /health 127.0.0.1 - 56.152µs - application/json
+2025/07/19 17:48:29 logger.go:27: Application started
+2025/07/19 17:49:02 logger.go:27: Application started
+2025/07/19 17:49:11 middleware.go:38: [GET] /health 127.0.0.1 - 35.061µs - application/json
+2025/07/19 17:49:11 middleware.go:38: [GET] /favicon.ico 127.0.0.1 - 12.362µs - text/plain; charset=utf-8
+2025/07/19 17:49:14 middleware.go:38: [GET] /healt 127.0.0.1 - 13.13µs - text/plain; charset=utf-8
+2025/07/19 17:49:35 logger.go:27: Application started
+2025/07/19 17:49:41 logger.go:27: Application started
+2025/07/19 17:50:13 logger.go:27: Application started
+2025/07/19 17:50:39 logger.go:27: Application started
+2025/07/19 18:02:04 logger.go:27: Application started
