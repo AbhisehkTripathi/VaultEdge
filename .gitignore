@@ -1,0 +1,51 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Output of the go coverage tool
+*.coverprofile
+*.cov
+*.coverage
+
+# Dependency directories (remove the comment below if you use Go modules)
+/vendor/
+
+# Logs and temp files
+logs/
+*.log
+*.tmp
+*.swp
+
+# IDE/editor config
+.idea/
+.vscode/
+.qodo/
+*.sublime*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Air temp and build
+/tmp/
+# .air.toml
+
+# Build output
+/app
+/tmp
+
+# Uploads
+/uploads/
+
+# Environment files
+.env
+.env.*
+
+# Docker
+*.pid
+docker-compose.override.yml
