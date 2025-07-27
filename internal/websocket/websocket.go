@@ -2,53 +2,133 @@ package websocket
 
 import (
 	"log"
+	"sync"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
 )
 
-// HandleWebSocket handles WebSocket connections
-func HandleWebSocket(c *fiber.Ctx) error {
-	// IsWebSocketUpgrade returns true if the client
-	// requested upgrade to the WebSocket protocol.
-	if websocket.IsWebSocketUpgrade(c) {
-		c.Locals("allowed", true)
-		return websocket.New(func(c *websocket.Conn) {
-			// c.Locals is added to the *websocket.Conn
-			log.Println(c.Locals("allowed"))  // true
-			log.Println(c.Params("id"))       // 123
-			log.Println(c.Query("v"))         // 1.0
-			log.Println(c.Cookies("session")) // ""
+type Client struct {
+	conn *websocket.Conn
+	send chan []byte
+}
 
-			// websocket.Conn bindings https://pkg.go.dev/github.com/fasthttp/websocket?tab=doc#pkg-index
-			var (
-				mt  int
-				msg []byte
-				err error
-			)
-			for {
-				if mt, msg, err = c.ReadMessage(); err != nil {
-					log.Println("read:", err)
-					break
+type Hub struct {
+	clients    map[*Client]bool
+	register   chan *Client
+	unregister chan *Client
+	broadcast  chan []byte
+	mu         sync.RWMutex
+}
+
+func NewHub() *Hub {
+	return &Hub{
+		clients:    make(map[*Client]bool),
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+		broadcast:  make(chan []byte),
+	}
+}
+
+var HubInstance = NewHub()
+
+func (h *Hub) Run() {
+	for {
+		select {
+		case client := <-h.register:
+			h.mu.Lock()
+			h.clients[client] = true
+			h.mu.Unlock()
+		case client := <-h.unregister:
+			h.mu.Lock()
+			if _, ok := h.clients[client]; ok {
+				delete(h.clients, client)
+				close(client.send)
+			}
+			h.mu.Unlock()
+		case message := <-h.broadcast:
+			h.mu.RLock()
+			for client := range h.clients {
+				select {
+				case client.send <- message:
+				default:
+					close(client.send)
+					delete(h.clients, client)
 				}
-				log.Printf("recv: %s", msg)
+			}
+			h.mu.RUnlock()
+		}
+	}
+}
 
-				// Echo the message back
-				if err = c.WriteMessage(mt, msg); err != nil {
-					log.Println("write:", err)
+// func HandleWebSocket(c *fiber.Ctx) error {
+// 	if websocket.IsWebSocketUpgrade(c) {
+// 		return websocket.New(func(conn *websocket.Conn) {
+// 			client := &Client{conn: conn, send: make(chan []byte, 256)}
+// 			HubInstance.register <- client
+
+// 			go func() {
+// 				for {
+// 					mt, message, err := conn.ReadMessage()
+// 					if err != nil {
+// 						break
+// 					}
+// 					if mt == websocket.TextMessage || mt == websocket.BinaryMessage {
+// 						log.Printf("recv: %s", message)
+// 					}
+// 				}
+// 				HubInstance.unregister <- client
+// 				conn.Close()
+// 			}()
+
+//				// Write pump
+//				for msg := range client.send {
+//					if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+//						break
+//					}
+//				}
+//			})(c)
+//		}
+//		return fiber.ErrUpgradeRequired
+//	}
+func HandleWebSocket(c *fiber.Ctx) error {
+	if !websocket.IsWebSocketUpgrade(c) {
+		return fiber.ErrUpgradeRequired
+	}
+	return websocket.New(func(conn *websocket.Conn) {
+		client := &Client{conn: conn, send: make(chan []byte, 256)}
+		HubInstance.register <- client
+
+		var closeOnce sync.Once
+		cleanup := func() {
+			closeOnce.Do(func() {
+				HubInstance.unregister <- client
+				_ = conn.Close()
+			})
+		}
+
+		go func() {
+			defer cleanup()
+			for msg := range client.send {
+				if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
 					break
 				}
 			}
+		}()
 
-		})(c)
-	}
-	// Returns status 426 Upgrade Required
-	return fiber.ErrUpgradeRequired
+		for {
+			mt, message, err := conn.ReadMessage()
+			if err != nil {
+				break
+			}
+			if mt == websocket.TextMessage || mt == websocket.BinaryMessage {
+				log.Printf("recv: %s", message)
+			}
+		}
+		cleanup()
+	})(c)
 }
 
-// BroadcastMessage broadcasts a message to all connected clients
 func BroadcastMessage(message []byte) {
-	// In a real application, you would maintain a list of active connections
-	// and broadcast to all of them
-	log.Printf("Broadcasting message: %s", string(message))
+	HubInstance.broadcast <- message
 }
